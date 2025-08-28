@@ -1,6 +1,6 @@
 #Makefile chooser.  Choose one:
 
-MAKEFILE = makefile.bor
+MAKEFILE = makefile.wt
 #MAKEFILE = makefile.sgi
 #MAKEFILE = makefile.dos
 #MAKEFILE = makefile.emx

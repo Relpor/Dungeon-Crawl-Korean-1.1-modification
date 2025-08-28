@@ -76,7 +76,7 @@ install:
 
 ########################### Explicit Rules ########################
 $(EXE_FILE): $(OBJECTS) libwt.o libtile.o  tiles.o winclass-win.o winclass.o crawl.res
-	$(LINKER) -aa -x $(OBJECTS) -L"d:\borland\bcc55\lib;d:\borland\bcc55\lib\psdk" libwt.o libtile.o  tiles.o winclass-win.o winclass.o c0w32.obj, $(EXE_FILE),, cw32.lib import32.lib,, crawl.res
+	$(LINKER) -aa -x $(OBJECTS) -L"c:\borland\bcc55\lib;c:\borland\bcc55\lib\psdk" libwt.o libtile.o  tiles.o winclass-win.o winclass.o c0w32.obj, $(EXE_FILE),, cw32.lib import32.lib,, crawl.res
 
 crawl.res: $(CRAWL_RC)
 	$(RC) -r -focrawl.res $(CRAWL_RC)
