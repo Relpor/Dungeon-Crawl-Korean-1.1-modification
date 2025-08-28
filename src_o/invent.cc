@@ -338,8 +338,8 @@ unsigned char invent( int item_class_inv, bool show_price )
 
                         in_name( j, DESC_INVENTORY_EQUIP, st_pass );
 
-                        //!!!!ô‚¢‚ğŠÅ”jÏ‚İ‚Ìô‚í‚ê‚½•i‚ğÔF‚Å•\¦‚·‚éƒIƒvƒVƒ‡ƒ“
-                        //!!!!‘•”õ’†‚ÌƒAƒCƒeƒ€‚Í—Î‚Å•\¦‚·‚é
+                        //!!!!ô‚¢‚ğŠÅ”jÏ‚İ‚Ìô‚í‚ê‚½•i‚ğÔF‚Å?¦‚·‚éƒIƒvƒVƒ‡ƒ“
+                        //!!!!‘•”õ’†‚ÌƒAƒCƒe?‚Í—Î‚Å?¦‚·‚é
                         if (Options.stress_cursed)
                         {
                             if ( (j == you.equip[EQ_WEAPON]     )
@@ -853,7 +853,7 @@ const char *command_string( int i )
            (i == 110) ? "v    : ¾ÆÀÌÅÛÀÇ »ó¼¼ ¼³¸í º¸±â(View)"   :
            (i == 120) ? "w    : ¾ÆÀÌÅÛ ÀåºñÇÏ±â(Wield)"          :
            (i == 130) ? "x    : ÁÖÀ§ÀÇ °ÍÀ» Á¶»çÇÔ(eXamine)"     :
-           (i == 135) ? "z    : ¸¶¹ıºÀÀ» »ç¿ë(Zap)"                :
+           (i == 135) ? "z    : ¸¶¹ı ÁÖ¹® ½ÃÀü"                :
            (i == 140) ? "A    : Æ¯¼ö ´É·Â/º¯ÀÌ ¸ñ·Ï(Abilities)"  :
            (i == 141) ? "C    : °æÇèÄ¡ µîÀ» º¸±â(Check)"         :
            (i == 142) ? "D    : ½ÃÃ¼¸¦ ÇØÃ¼ÇÏ±â(Dissect)"        :
@@ -866,7 +866,7 @@ const char *command_string( int i )
            (i == 179) ? "V    : ¹öÀü Á¤º¸ º¸±â(Version)"         :
            (i == 200) ? "W/T  : °©¿Ê ÀÔ±â/¹ş±â(Wear/Take off)"   :
            (i == 210) ? "X    : ÇöÀç Ãş Áöµµ º¸±â(eXamine)"      :
-           (i == 220) ? "Z    : ¸¶¹ı ÁÖ¹® ½ÃÀü"                  :
+           (i == 220) ? "Z    : ¸¶¹ıºÀÀ» »ç¿ë(Zap)"                  :
            (i == 240) ? ",/g  : ¾ÆÀÌÅÛ Áİ±â(Get)"                :
            (i == 242) ? "./del: 1ÅÏ ½¬±â"                        :
            (i == 250) ? "</>  : °è´Ü ¿Ã¶ó°¡±â/³»·Á°¡±â"          :
@@ -1058,7 +1058,7 @@ void use_item(int idx)
     mesclr();
     mpr(desc);
 #ifdef JP
-        snprintf(desc, 190, "¹«¾ó ÇÒ°ÍÀÎ°¡? %s  d)¹ö¸®±â    0-9/¸¶¿ì½º ÈÙ) °¹¼ö    ESC)Ãë¼Ò~",
+        snprintf(desc, 190, "¹«¾ó ÇÒ°ÍÀÎ°¡? %s  d)¹ö¸®±â    0-9/¸¶¿ì½º ÈÙ) °¹¼ö    ESC)Ãë¼Ò?",
 #else
         snprintf(desc, 190, "What to do?  %s  d) Drop   0-9/mouse wheel) Quantity  ESC) Abort",
 #endif
