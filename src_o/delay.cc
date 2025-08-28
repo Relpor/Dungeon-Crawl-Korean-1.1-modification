@@ -1,0 +1,702 @@
+/*
+ *  File:     delay.cc
+ *  Summary:  Functions for handling multi-turn actions.    
+ *
+ *  Change History (most recent first):
+ *
+ * <1> Sept 09, 2001     BWR             Created
+ */
+
+#include "AppHdr.h"
+#include "externs.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#include "delay.h"
+#include "enum.h"
+#include "food.h"
+#include "items.h"
+#include "itemname.h"
+#include "item_use.h"
+#include "it_use2.h"
+#include "message.h"
+#include "misc.h"
+#include "monstuff.h"
+#include "ouch.h"
+#include "output.h"
+#include "player.h"
+#include "randart.h"
+#include "spl-util.h"
+#include "stuff.h"
+
+void start_delay( int type, int turns, int parm1, int parm2 )
+/***********************************************************/
+{
+    delay_queue_item  delay;
+    
+    delay.type = type;
+    delay.duration = turns;
+    delay.parm1 = parm1;
+    delay.parm2 = parm2;
+
+    you.delay_queue.push( delay ); 
+}
+
+void stop_delay( void )
+/*********************/
+{
+    delay_queue_item  delay = you.delay_queue.front(); 
+
+    // At the very least we can remove any queued delays, right 
+    // now there is no problem with doing this... note that
+    // any queuing here can only happen from a single command,
+    // as the effect of a delay doesn't normally allow interaction
+    // until it is done... it merely chains up individual actions
+    // into a single action.  -- bwr
+    if (you.delay_queue.size() > 1) 
+    {
+        while (you.delay_queue.size())
+            you.delay_queue.pop();
+
+        you.delay_queue.push( delay );
+    }
+
+    switch (delay.type)
+    {
+    case DELAY_BUTCHER:
+        // Corpse keeps track of work in plus2 field, see handle_delay() -- bwr
+#ifdef JP 
+        mpr( "시체를 토막내던 일을 멈추었다." );
+#else
+        mpr( "You stop butchering the corpse." );
+#endif
+        you.delay_queue.pop();
+        break;
+
+    case DELAY_MEMORIZE:        
+        // Losing work here is okay... having to start from 
+        // scratch is a reasonable behaviour. -- bwr
+#ifdef JP 
+        mpr( "주문을 암기하던 중 방해를 받았다." );
+#else
+        mpr( "Your memorization is interrupted." );
+#endif
+        you.delay_queue.pop();
+        break;
+
+    case DELAY_PASSWALL:        
+        // The lost work here is okay since this spell requires 
+        // the player to "attune to the rock".  If changed, the
+        // the delay should be increased to reduce the power of
+        // this spell. -- bwr
+#ifdef JP 
+        mpr( "명상을 하던 중 방해를 받았다." );
+#else
+        mpr( "Your meditation is interrupted." );
+#endif
+        you.delay_queue.pop();
+        break;
+
+    case DELAY_INTERUPTABLE:  
+        // always stopable by definition... 
+        // try using a more specific type anyways. -- bwr
+        you.delay_queue.pop();
+        break;
+
+    case DELAY_EAT:
+        // XXX: Large problems with object destruction here... food can
+        // be from in the inventory or on the ground and these are
+        // still handled quite differently.  Eventually we would like 
+        // this to be stoppable, with partial food items implimented. -- bwr
+        break; 
+
+    case DELAY_ARMOUR_ON:
+    case DELAY_ARMOUR_OFF:
+        // These two have the default action of not being interuptable,
+        // although they will often be chained (remove cloak, remove 
+        // armour, wear new armour, replace cloak), all of which can
+        // be stopped when complete.  This is a fairly reasonable 
+        // behaviour, although perhaps the character should have 
+        // option of reversing the current action if it would take 
+        // less time to get out of the plate mail that's half on
+        // than it would take to continue.  Probably too much trouble,
+        // and would have to have a prompt... this works just fine. -- bwr
+        break;
+
+    case DELAY_AUTOPICKUP:        // one turn... too much trouble
+    case DELAY_WEAPON_SWAP:       // one turn... too much trouble 
+    case DELAY_DROP_ITEM:         // one turn... only used for easy armour drops
+    case DELAY_ASCENDING_STAIRS:  // short... and probably what people want
+    case DELAY_DESCENDING_STAIRS: // short... and probably what people want
+    case DELAY_UNINTERUPTABLE:    // never stopable 
+    default:
+        break;
+    }
+}
+
+bool you_are_delayed( void )
+/**************************/
+{
+    return (!you.delay_queue.empty());
+}
+
+int current_delay_action( void )
+/******************************/
+{
+    return (you_are_delayed() ? you.delay_queue.front().type 
+                              : DELAY_NOT_DELAYED);
+}
+
+void handle_delay( void )
+/***********************/
+{
+    int   ego;
+    char  str_pass[ ITEMNAME_SIZE ];
+
+    if (you_are_delayed()) 
+    {
+        delay_queue_item &delay = you.delay_queue.front();
+
+        // First check cases where delay may no longer be valid:
+        // XXX: need to handle passwall when monster digs -- bwr
+        if (delay.type == DELAY_BUTCHER)
+        {
+            // A monster may have raised the corpse you're chopping up! -- bwr
+            // Note that a monster could have raised the corpse and another
+            // monster could die and create a corpse with the same ID number...
+            // However, it would not be at the player's square like the 
+            // original and that's why we do it this way.  Note that 
+            // we ignore the conversion to skeleton possiblity just to 
+            // be nice. -- bwr
+            if (is_valid_item( mitm[ delay.parm1 ] )
+                && mitm[ delay.parm1 ].base_type == OBJ_CORPSES
+                && mitm[ delay.parm1 ].x == you.x_pos
+                && mitm[ delay.parm1 ].y == you.y_pos)
+            {
+                // mark work done on the corpse in case we stop -- bwr
+                mitm[ delay.parm1 ].plus2++;
+            }
+            else
+            {
+                // corpse is no longer valid!
+                stop_delay();
+                return;
+            }
+        }
+
+        // Handle delay:
+        if (delay.duration > 0)
+        {
+#if DEBUG_DIAGNOSTICS
+#ifdef JP 
+            snprintf( info, INFO_SIZE, "Delay type: %d   duration: %d", 
+#else
+            snprintf( info, INFO_SIZE, "Delay type: %d   duration: %d", 
+#endif
+                      delay.type, delay.duration ); 
+
+            mpr( info, MSGCH_DIAGNOSTICS );
+#endif
+            delay.duration--;
+        }
+        else 
+        {
+            switch (delay.type)
+            {
+            case DELAY_AUTOPICKUP:
+                break;
+
+            case DELAY_WEAPON_SWAP:
+                weapon_switch( delay.parm1 );
+                break;
+
+            case DELAY_ARMOUR_ON:
+                set_ident_flags( you.inv[ delay.parm1 ], ISFLAG_EQ_ARMOUR_MASK );
+
+                in_name( delay.parm1, DESC_NOCAP_YOUR, str_pass ); 
+#ifdef JP 
+                snprintf( info, INFO_SIZE, "%s의 착용을 마쳤다.", str_pass );
+#else
+                snprintf( info, INFO_SIZE, "You finish putting on %s.", str_pass );
+#endif
+                mpr(info);
+
+                if (you.inv[ delay.parm1 ].sub_type < ARM_SHIELD
+                    || you.inv[ delay.parm1 ].sub_type > ARM_LARGE_SHIELD)
+                {
+                    you.equip[EQ_BODY_ARMOUR] = delay.parm1;
+
+                    if (you.duration[DUR_ICY_ARMOUR] != 0)
+                    {
+#ifdef JP 
+                        mpr( "당신의 얼음 갑옷이 녹아 없어져 버렸다.", MSGCH_DURATION );
+#else
+                        mpr( "Your icy armour melts away.", MSGCH_DURATION );
+#endif
+                        you.redraw_armour_class = 1;
+                        you.duration[DUR_ICY_ARMOUR] = 0;
+                    }
+                }
+                else
+                {
+                    switch (you.inv[ delay.parm1 ].sub_type)
+                    {
+                    case ARM_BUCKLER:
+                    case ARM_LARGE_SHIELD:
+                    case ARM_SHIELD:
+                        if (you.duration[DUR_CONDENSATION_SHIELD])
+                        {
+#ifdef JP 
+                            mpr( "당신의 얼음 방패가 증발했다.", MSGCH_DURATION );
+#else
+                            mpr( "Your icy shield evaporates.", MSGCH_DURATION );
+#endif
+                            you.duration[DUR_CONDENSATION_SHIELD] = 0;
+                        }
+                        you.equip[EQ_SHIELD] = delay.parm1;
+                        break;
+                    case ARM_CLOAK:
+                        you.equip[EQ_CLOAK] = delay.parm1;
+                        break;
+                    case ARM_HELMET:
+                        you.equip[EQ_HELMET] = delay.parm1;
+                        break;
+                    case ARM_GLOVES:
+                        you.equip[EQ_GLOVES] = delay.parm1;
+                        break;
+                    case ARM_BOOTS:
+                        you.equip[EQ_BOOTS] = delay.parm1;
+                        break;
+                    }
+                }
+
+                ego = get_armour_ego_type( you.inv[ delay.parm1 ] );
+                if (ego != SPARM_NORMAL)
+                {   
+                    switch (ego)
+                    {
+                    case SPARM_RUNNING:
+#ifdef JP 
+                        strcpy(info, "자신의 ");
+#else
+                        strcpy(info, "You feel quick");
+#endif
+                        strcat(info, (you.species == SP_NAGA
+#ifdef JP 
+                                || you.species == SP_CENTAUR) ? "몸이 빨라짐을 느낀다." : "발이 빨라짐을 느낀다.");
+#else
+                                || you.species == SP_CENTAUR) ? "." : " on your feet.");
+#endif
+                        mpr(info);
+                        break;
+
+                    case SPARM_FIRE_RESISTANCE:
+#ifdef JP 
+                        mpr("불에 내성이 생겼다.");
+#else
+                        mpr("You feel resistant to fire.");
+#endif
+                        break;
+
+                    case SPARM_COLD_RESISTANCE:
+#ifdef JP 
+                        mpr("냉기에 내성이 생겼다.");
+#else
+                        mpr("You feel resistant to cold.");
+#endif
+                        break;
+
+                    case SPARM_POISON_RESISTANCE:
+#ifdef JP 
+                        mpr("독에 내성이 생겼다."); // Dio 독내성이 맞는지 모르겠네요..
+#else
+                        mpr("You feel healthy.");
+#endif
+                        break;
+
+                    case SPARM_SEE_INVISIBLE:
+#ifdef JP 
+                        mpr("보다 예민해졌다.");
+#else
+                        mpr("You feel perceptive.");
+#endif
+                        break;
+
+                    case SPARM_DARKNESS:
+                        if (!you.invis)
+#ifdef JP 
+                            mpr("몸이 잠시 투명해졌다.");
+#else
+                            mpr("You become transparent for a moment.");
+#endif
+                        break;
+
+                    case SPARM_STRENGTH:
+                        modify_stat(STAT_STRENGTH, 3, false);
+                        break;
+
+                    case SPARM_DEXTERITY:
+                        modify_stat(STAT_DEXTERITY, 3, false);
+                        break;
+
+                    case SPARM_INTELLIGENCE:
+                        modify_stat(STAT_INTELLIGENCE, 3, false);
+                        break;
+
+                    case SPARM_PONDEROUSNESS:
+#ifdef JP 
+                        mpr("몸이 무거워진 것 같다.");
+#else
+                        mpr("You feel rather ponderous.");
+#endif
+                        // you.speed += 2; 
+                        you.redraw_evasion = 1;
+                        break;
+
+                    case SPARM_LEVITATION:
+#ifdef JP 
+                        mpr("몸이 가벼워진 것 같다.");
+#else
+                        mpr("You feel rather light.");
+#endif
+                        break;
+
+                    case SPARM_MAGIC_RESISTANCE:
+#ifdef JP 
+                        mpr("마법에 대한 저항력이 생겼다.");
+#else
+                        mpr("You feel resistant to magic.");
+#endif
+                        break;
+
+                    case SPARM_PROTECTION:
+#ifdef JP 
+                        mpr("보호를 받고 있는 것 같다.");
+#else
+                        mpr("You feel protected.");
+#endif
+                        break;
+
+                    case SPARM_STEALTH:
+#ifdef JP 
+                        mpr("움직임이 조용해졌다.");
+#else
+                        mpr("You feel stealthy.");
+#endif
+                        break;
+
+                    case SPARM_RESISTANCE:
+#ifdef JP 
+                        mpr("열과 추위에 내성이 생겼다."); // Dio 좀더 살을 붙여야 할듯..
+#else
+                        mpr("You feel resistant to extremes of temperature.");
+#endif
+                        break;
+
+                    case SPARM_POSITIVE_ENERGY:
+#ifdef JP 
+                        mpr("자신의 생명력이 보호받고 있다.");
+#else
+                        mpr("Your life-force is being protected.");
+#endif
+                        break;
+
+                    case SPARM_ARCHMAGI:
+                        if (!you.skills[SK_SPELLCASTING])
+#ifdef JP 
+                            mpr("이상하게 멍한 느낌이 든다.");
+#else
+                            mpr("You feel strangely numb.");
+#endif
+                        else
+#ifdef JP 
+                            mpr("엄청난 힘이 느껴진다.");
+#else
+                            mpr("You feel extremely powerful.");
+#endif
+                        break;
+                    }
+                }
+
+                if (is_random_artefact( you.inv[ delay.parm1 ] ))
+                    use_randart( delay.parm1 );
+
+                if (item_cursed( you.inv[ delay.parm1 ] ))
+#ifdef JP 
+                    mpr( "우욱! 소름끼치도록 차갑다!" );
+#else
+                    mpr( "Oops, that feels deathly cold." );
+#endif
+
+                you.redraw_armour_class = 1;
+                you.redraw_evasion = 1;
+#ifdef USE_TILE
+		if (Options.use_tile)
+                    TilePlayerRefresh();
+#endif
+                break;
+
+            case DELAY_ARMOUR_OFF:
+                in_name( delay.parm1, DESC_NOCAP_YOUR, str_pass ); 
+#ifdef JP 
+                snprintf( info, INFO_SIZE, "%s을(를) 벗었다.", str_pass );
+#else
+                snprintf( info, INFO_SIZE, "You finish taking off %s.", str_pass );
+#endif
+                mpr(info);
+
+                if (you.inv[ delay.parm1 ].sub_type < ARM_SHIELD
+                    || you.inv[ delay.parm1 ].sub_type > ARM_LARGE_SHIELD)
+                {
+                    you.equip[EQ_BODY_ARMOUR] = -1;
+                }
+                else
+                {
+                    switch (you.inv[ delay.parm1 ].sub_type)
+                    {
+                    case ARM_BUCKLER:
+                    case ARM_LARGE_SHIELD:
+                    case ARM_SHIELD:
+                        if (delay.parm1 == you.equip[EQ_SHIELD])
+                            you.equip[EQ_SHIELD] = -1;
+                        break;
+
+                    case ARM_CLOAK:
+                        if (delay.parm1 == you.equip[EQ_CLOAK])
+                            you.equip[EQ_CLOAK] = -1;
+                        break;
+
+                    case ARM_HELMET:
+                        if (delay.parm1 == you.equip[EQ_HELMET])
+                            you.equip[EQ_HELMET] = -1;
+                        break;
+
+
+                    case ARM_GLOVES:
+                        if (delay.parm1 == you.equip[EQ_GLOVES])
+                            you.equip[EQ_GLOVES] = -1;
+                        break;
+
+                    case ARM_BOOTS:
+                        if (delay.parm1 == you.equip[EQ_BOOTS])
+                            you.equip[EQ_BOOTS] = -1;
+                        break;
+                    }
+                }
+
+                unwear_armour( delay.parm1 );
+
+                you.redraw_armour_class = 1;
+                you.redraw_evasion = 1;
+#ifdef USE_TILE
+		if(Options.use_tile)
+                    TilePlayerRefresh();
+#endif
+                break;
+
+            case DELAY_EAT:
+#ifdef JP 
+                mpr( "식사를 끝마쳤다." );
+#else
+                mpr( "You finish eating." );
+#endif
+                break; 
+
+            case DELAY_MEMORIZE:
+#ifdef JP 
+                mpr( "주문의 암기를 마쳤다." );
+#else
+                mpr( "You finish memorising." );
+#endif
+                add_spell_to_memory( delay.parm1 );
+                break; 
+
+            case DELAY_PASSWALL:
+                {
+#ifdef JP 
+                    mpr( "바위와 융함하는 것을 마쳤다." );
+#else
+                    mpr( "You finish merging with the rock." );
+#endif
+                    more();  // or the above message won't be seen
+
+                    const int pass_x = delay.parm1;
+                    const int pass_y = delay.parm2;
+
+                    if (pass_x != 0 && pass_y != 0)
+                    {
+
+                        switch (grd[ pass_x ][ pass_y ])
+                        {
+                        case DNGN_ROCK_WALL:
+                        case DNGN_STONE_WALL:
+                        case DNGN_METAL_WALL:
+                        case DNGN_GREEN_CRYSTAL_WALL:
+                        case DNGN_WAX_WALL:
+                        case DNGN_SILVER_STATUE:
+                        case DNGN_ORANGE_CRYSTAL_STATUE:
+                            ouch(1 + you.hp, 0, KILLED_BY_PETRIFICATION);
+                            break;
+
+                        case DNGN_SECRET_DOOR:      // oughtn't happen
+                        case DNGN_CLOSED_DOOR:      // open the door
+                            grd[ pass_x ][ pass_y ] = DNGN_OPEN_DOOR;
+                            break;
+
+                        default:
+                            break;
+                        }
+
+                //jmf: hmm, what to do. kill the monster? (seems too powerful)
+                //     displace the monster? randomly teleport the monster?
+                //     This seems fair: try to move the monster, but if not
+                //     able to, then kill it.
+                        int mon = mgrd[ pass_x ][ pass_y ];
+                        if (mon != NON_MONSTER)
+                        {
+                            monster_blink( &menv[ mon ] );
+
+                            // recheck square for monster
+                            mon = mgrd[ pass_x ][ pass_y ];
+                            if (mon != NON_MONSTER)
+                                monster_die( &menv[ mon ], KILL_YOU, 0 );
+                        }
+
+                        you.x_pos = pass_x;
+                        you.y_pos = pass_y;
+                        redraw_screen();
+
+                        const unsigned char grid = grd[ you.x_pos ][ you.y_pos ];
+                        if ((grid == DNGN_LAVA || grid == DNGN_DEEP_WATER)
+                            && !player_is_levitating())
+                        {
+                            if (you.species == SP_MERFOLK && grid == DNGN_DEEP_WATER)
+                            {
+#ifdef JP 
+                                mpr("물 속으로 들어가, 본래의 모습으로 돌아왔다.");
+#else
+                                mpr("You fall into the water and return "
+                                    "to your normal form.");
+#endif
+                                merfolk_start_swimming();
+                            }
+                            else
+                            {
+                                fall_into_a_pool( true, grid );
+                                redraw_screen();
+                            }
+                        }
+                    }
+                }
+                break; 
+
+            case DELAY_BUTCHER:
+#ifdef JP 
+                strcpy( info, "시체에서 고기를 " );
+#else
+                strcpy( info, "You finish " );
+#endif
+                strcat( info, (you.species == SP_TROLL
+#ifdef JP 
+                                || you.species == SP_GHOUL) ? "찢어 분리하는 일을 "
+                                                            : "발라내는 일을 " );
+#else
+                                || you.species == SP_GHOUL) ? "ripping"
+                                                            : "chopping" );
+#endif
+
+#ifdef JP 
+                strcat( info, "마쳤다." );
+#else
+                strcat( info, " the corpse into pieces." );
+#endif
+                mpr( info );
+
+                turn_corpse_into_chunks( mitm[ delay.parm1 ] );
+
+                if (you.berserker && you.berserk_penalty != NO_BERSERK_PENALTY)
+                {
+#ifdef JP 
+                    mpr("희열을 느낀다.");
+#else
+                    mpr("You enjoyed that.");
+#endif
+                    you.berserk_penalty = 0;
+                }
+                break;
+
+            case DELAY_DROP_ITEM:
+                // Note:  checking if item is dropable is assumed to 
+                // be done before setting up this delay... this includes
+                // quantity (delay.parm2). -- bwr
+
+                // Make sure item still exists.
+                if (!is_valid_item( you.inv[ delay.parm1 ] ))
+                    break;
+
+                // Must handle unwield_item before we attempt to copy 
+                // so that temporary brands and such are cleared. -- bwr
+                if (delay.parm1 == you.equip[EQ_WEAPON])
+                {   
+                    unwield_item( delay.parm1 );
+                    you.equip[EQ_WEAPON] = -1;
+                    canned_msg( MSG_EMPTY_HANDED );
+                }
+
+                if (!copy_item_to_grid( you.inv[ delay.parm1 ], 
+                                        you.x_pos, you.y_pos, delay.parm2 ))
+                {
+#ifdef JP 
+                    mpr("이 층에 아이템이 너무 많아 그 아이템을 떨어뜨릴 수 없다.");
+#else
+                    mpr("Too many items on this level, not dropping the item.");
+#endif
+                }
+                else
+                {
+                    quant_name( you.inv[ delay.parm1 ], delay.parm2, 
+                                DESC_NOCAP_A, str_pass );
+
+#ifdef JP 
+                    snprintf( info, INFO_SIZE, "%s을(를) 떨어뜨렸다.", str_pass );
+#else
+                    snprintf( info, INFO_SIZE, "You drop %s.", str_pass );
+#endif
+                    mpr(info);
+
+                    dec_inv_item_quantity( delay.parm1, delay.parm2 );
+                }
+                break;
+
+            case DELAY_ASCENDING_STAIRS:
+                up_stairs();
+                untag_followers();
+                break;
+
+            case DELAY_DESCENDING_STAIRS:
+                down_stairs( false, delay.parm1 );
+                untag_followers();
+                break;
+
+            case DELAY_INTERUPTABLE:
+            case DELAY_UNINTERUPTABLE:
+                // these are simple delays that have no effect when complete
+                break;
+
+            default:
+#ifdef JP 
+                mpr( "하던 일을 끝냈다." );
+#else
+                mpr( "You finish doing something." );
+#endif
+                break; 
+            }
+
+            you.wield_change = true;
+            print_stats();  // force redraw of the stats
+            you.turn_is_over = 1;
+            you.delay_queue.pop();
+        }
+    }
+}

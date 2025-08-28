@@ -1,0 +1,4 @@
+//crawl.rc
+//#define CRAWL_ICON                       101
+
+CRAWL_ICON ICON "Crawl.ico"
