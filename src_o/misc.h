@@ -26,7 +26,7 @@ bool go_berserk(bool intentional);
 /* ***********************************************************************
  * called from: acr
  * *********************************************************************** */
-void search_around(void);
+void search_around(bool rest = true);
 
 
 // last updated 12may2000 {dlb}

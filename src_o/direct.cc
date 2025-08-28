@@ -53,7 +53,7 @@ static const char ycomp[9] = { 1, 1, 1, 0, 0, 0, -1, -1, -1 };
 static const char dirchars[19] = { "b1j2n3h4.5l6y7k8u9" };
 static const char DOSidiocy[10] = { "OPQKSMGHI" };
 #ifdef JP 
-static const char *aim_prompt = "¡∂¡ÿ (ƒøº≠ ¿Ãµø ∂«¥¬ -/+/= , CTRL-F : πÊπ˝ ∫¥∞Ê,  [.] ∂«¥¬ ['] ∑Œ ∞·¡§)";
+static const char *aim_prompt = "¡∂¡ÿ (ƒøº≠ ¿Ãµø ∂«¥¬ -/+/= , CTRL-F : πÊπ˝ ∫Ø∞Ê,  [.] ∂«¥¬ ['] ∑Œ ∞·¡§)";
 #else
 static const char *aim_prompt = "Aim (move cursor or -/+/=, change mode with CTRL-F, select with . or >)";
 #endif
@@ -197,6 +197,7 @@ void direction( struct dist &moves, int restrict, int mode )
                     dir = 0;
                     break;
 
+                case '\t':
                 case '+':
                 case '=':
                     targChosen = true;
@@ -205,6 +206,7 @@ void direction( struct dist &moves, int restrict, int mode )
 
                 case 't':
                 case 'p':
+                case '\r':
                     targChosen = true;
                     dir = 2;
                     break;
@@ -478,6 +480,7 @@ void look_around(struct dist &moves, bool justLooking, int first_move, int mode)
                         break;
 
                     case '-':
+                    case 'q':
                         if (mons_find( cx, cy, monsfind_pos, -1, mode ) == 0)
                             flush_input_buffer( FLUSH_ON_FAILURE );
                         else
@@ -490,6 +493,7 @@ void look_around(struct dist &moves, bool justLooking, int first_move, int mode)
 
                     case '+':
                     case '=':
+                    case '\t':
                         if (mons_find( cx, cy, monsfind_pos, 1, mode ) == 0)
                             flush_input_buffer( FLUSH_ON_FAILURE );
                         else
@@ -625,6 +629,15 @@ void look_around(struct dist &moves, bool justLooking, int first_move, int mode)
 #endif
             continue;
         }
+        
+        if (!justLooking) {
+#ifdef JP 
+            mpr("πﬂªÁ([Enter][.]), √Îº“([Esc]['])", MSGCH_PROMPT);
+#else
+            mpr("Shoot([Enter][.]), Cancel([Esc]['])", MSGCH_PROMPT);
+#endif
+        }
+        //mpr("");
         describe_cell(you.x_pos + cx - 17, you.y_pos + cy - 9);
     } // end WHILE
 
@@ -1869,7 +1882,7 @@ char *look_directly(int cx, int cy){
 #ifdef JP 
                 strcat(info, " ∏¶(¿ª) ¿Â∫Ò");
 #endif
-		// "ÉIÅ[ÉKÅAÇ±ÇÒñ_Ç∆ÉÅÉCÉXÇëïîı"
+		// "ÉI?ÉKÅAÇ±ÇÒ?Ç∆ÉÅÉCÉXÇëïîı"
 		// "An Ogre, wielding a club and a mace"
                 strcat(tipbuf,info);
             }
@@ -2116,7 +2129,7 @@ char *look_directly(int cx, int cy){
             (cloud_type == CLOUD_BLACK_SMOKE
 #ifdef JP 
               || cloud_type == CLOUD_BLACK_SMOKE_MON) ? "∞À¿∫ ø¨±‚ ±∏∏ß"
-                                                      : "πˆ±‚Ω≈¿« ±∏∏ßâ_");
+                                                      : "πˆ±‚Ω≈¿« ±∏∏ß?");
 #else
               || cloud_type == CLOUD_BLACK_SMOKE_MON) ? "black smoke"
                                                       : "buggy goodness");

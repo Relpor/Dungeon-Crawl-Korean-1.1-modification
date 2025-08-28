@@ -5329,10 +5329,10 @@ bool message_current_target(void)
         {
             snprintf( info, INFO_SIZE,
 #ifdef JP
-                      "당신은 현재 %s을(를) 겨누고 있다. (p/t를 사용해 발사)",
+                      "당신은 현재 %s을(를) 겨누고 있다. (p/t/Enter를 사용해 발사)",
                       ptr_monam(montarget, DESC_PLAIN) );
 #else
-                      "You are currently targeting %s (use p/t to fire).",
+                      "You are currently targeting %s (use p/t/Enter to fire).",
                       ptr_monam(montarget, DESC_NOCAP_THE) );
 #endif
 

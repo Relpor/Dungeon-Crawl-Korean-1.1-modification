@@ -141,11 +141,12 @@ void turn_corpse_into_chunks( item_def &item )
     }
 }                               // end place_chunks()
 
-void search_around(void)
+void search_around(bool rest)
 {
     char srx = 0;
     char sry = 0;
     int i;
+    bool found = false;
 
     // Never if doing something else... this prevents a slight asymetry
     // where using autopickup was giving free searches in comparison to
@@ -168,6 +169,7 @@ void search_around(void)
                 mpr("You found a secret door!");
 #endif
                 exercise(SK_TRAPS_DOORS, ((coinflip())? 2 : 1));
+                found = true;
             }
 
             if (grd[srx][sry] == DNGN_UNDISCOVERED_TRAP
@@ -183,9 +185,30 @@ void search_around(void)
 #else
                 mpr("You found a trap!");
 #endif
+                found = true;
             }
         }
     }
+
+    if (!found)
+    {
+        if (!rest) 
+        {
+#ifdef JP
+            mpr("¾Æ¹«·± ÀåÄ¡¸¦ Ã£Áö ¸ø Çß´Ù.");
+#else
+            mpr("You didn't find anything.");
+#endif
+        }
+        else 
+        {
+#ifdef JP
+            mpr("Àá½Ã ÈŞ½ÄÀ» ÃëÇß´Ù.");
+#else
+            mpr("You took a short break.");
+#endif
+        }
+}
 
     return;
 }                               // end search_around()
@@ -597,7 +620,7 @@ void up_stairs(void)
     mpr("Entering...");
 #endif
 
-    //¡ˆÚ“®‚µ‚½ŠK‚Ì—ƒ}[ƒN‚ÉÁ‚µ‚ğ“ü‚ê‚é
+    //¡ˆÚ“®‚µ‚½ŠK‚Ì—??ƒN‚ÉÁ‚µ‚ğ“ü‚ê‚é
     env.map[you.x_pos - 1][you.y_pos - 1] = mapch2( env.grid[you.x_pos][you.y_pos] );
 
     you.prev_targ = MHITNOT;
@@ -924,7 +947,7 @@ void down_stairs( bool remove_stairs, int old_level )
     mpr("Entering...");
 #endif
 
-    //¡ˆÚ“®‚µ‚½ŠK‚Ì—ƒ}[ƒN‚ÉÁ‚µ‚ğ“ü‚ê‚é
+    //¡ˆÚ“®‚µ‚½ŠK‚Ì—??ƒN‚ÉÁ‚µ‚ğ“ü‚ê‚é
     env.map[you.x_pos - 1][you.y_pos - 1] = mapch2( env.grid[you.x_pos][you.y_pos] );
 
     you.prev_targ = MHITNOT;
