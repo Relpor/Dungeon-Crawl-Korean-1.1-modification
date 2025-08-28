@@ -221,7 +221,7 @@ int main( int argc, char *argv[] )
 {
 #ifdef USE_ASCII_CHARACTERS
     // Default to the non-ibm set when it makes sense.
-    //通常の半角地図もこちら。
+    //通常の半角地?もこちら。
     viewwindow = &viewwindow3;
     mapch  = &mapchar3;
     mapch2 = &mapchar4;
@@ -1625,7 +1625,7 @@ static void input(void)
             flush_input_buffer( FLUSH_ON_FAILURE );
         break;
 
-    case 'z':
+    case 'Z':
     case CMD_ZAP_WAND:
         zap_wand();
         break;
@@ -1698,11 +1698,11 @@ static void input(void)
 
     case 's':
     case CMD_SEARCH:
-        search_around();
+        search_around(false);
         you.turn_is_over = 1;
         break;
 
-    case 'Z':
+    case 'z':
     case CMD_CAST_SPELL:
         /* randart wpns */
         if (scan_randarts(RAP_PREVENT_SPELLCASTING))
@@ -1800,7 +1800,7 @@ static void input(void)
         break;
 
 #ifdef USE_TILE
-    case '-': //着せ替えコマンド
+    case '-': //着せ替えコ?ンド
         if (Options.use_tile)
         {
             set_keyin_mode(KEYIN_MODE_PAPER_DOLL);

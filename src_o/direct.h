@@ -16,9 +16,9 @@
 #include "enum.h"
 
 #ifdef JP
-#define STD_DIRECTION_PROMPT    "어디에 있는 목표물을 조준합니까? ([*][+][-]로 조준)"
+#define STD_DIRECTION_PROMPT    "어디에 있는 목표물을 조준합니까? ([*][+][-][Tab][q]로 조준)"
 #else
-#define STD_DIRECTION_PROMPT    "Which direction ([*+-] to target)? "
+#define STD_DIRECTION_PROMPT    "Which direction ([*+-][tab][q] to target)? "
 #endif
 // last updated 12may2000 {dlb}
 /* ***********************************************************************
