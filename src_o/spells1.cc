@@ -317,7 +317,15 @@ bool identify(int power)
 
     // scrolls of identify *may* produce "extra" identifications {dlb}:
     if (power == -1 && one_chance_in(5))
+    {
         id_used += (coinflip()? 1 : 2);
+#ifdef JP
+        mpr("추가로 아이템을 감정할 수 있다.");
+#else
+        mpr("You can identify additional items.");
+#endif
+        more();
+    }
 
     do
     {
@@ -329,13 +337,18 @@ bool identify(int power)
                                         false, false );
         if (item_slot == PROMPT_ABORT)
         {
-            canned_msg( MSG_OK );
+            if (!identified)
+                canned_msg( MSG_OK );
             return (identified);
         }
 
         if ((you.inv[item_slot].flags & ISFLAG_IDENT_MASK) == ISFLAG_IDENT_MASK)
         {
-            canned_msg(MSG_NOTHING_HAPPENS);
+#ifdef JP
+            mpr("이미 감정된 아이템이다.");
+#else
+            mpr("That item is already identified.");
+#endif
             continue;
         }
 
