@@ -3458,6 +3458,17 @@ void read_scroll(void)
 
     // decrement and handle inventory if any scroll other than paper {dlb}:
     const int scroll_type = you.inv[item_slot].sub_type;
+
+    // An identify scroll is only consumed after a useful target is chosen.
+    if (scroll_type == SCR_IDENTIFY && !you.conf)
+    {
+        if (!identify(-1))
+        {
+            you.turn_is_over = 0;
+            return;
+        }
+    }
+
     if (scroll_type != SCR_PAPER)
     {
 #ifdef JP
@@ -3634,7 +3645,6 @@ void read_scroll(void)
         // important {dlb}
         set_ident_type( OBJ_SCROLLS, SCR_IDENTIFY, ID_KNOWN_TYPE );
 
-        identify(-1);
         you.wield_change = true;
         break;
 

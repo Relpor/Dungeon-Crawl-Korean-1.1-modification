@@ -308,10 +308,11 @@ void cast_fire_storm(int powc)
     viewwindow(1, false);
 }                               // end cast_fire_storm()
 
-void identify(int power)
+bool identify(int power)
 {
     int id_used = 1;
     int item_slot;
+    bool identified = false;
     char str_pass[ ITEMNAME_SIZE ];
 
     // scrolls of identify *may* produce "extra" identifications {dlb}:
@@ -329,7 +330,13 @@ void identify(int power)
         if (item_slot == PROMPT_ABORT)
         {
             canned_msg( MSG_OK );
-            return;
+            return (identified);
+        }
+
+        if ((you.inv[item_slot].flags & ISFLAG_IDENT_MASK) == ISFLAG_IDENT_MASK)
+        {
+            canned_msg(MSG_NOTHING_HAPPENS);
+            continue;
         }
 
         set_ident_type( you.inv[item_slot].base_type,
@@ -344,9 +351,12 @@ void identify(int power)
         if (item_slot == you.equip[EQ_WEAPON])
             you.wield_change = true;
 
+        identified = true;
         id_used--;
     }
     while (id_used > 0);
+
+    return (identified);
 }                               // end identify()
 
 void conjure_flame(int pow)
