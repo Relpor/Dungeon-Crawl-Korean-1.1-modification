@@ -1829,15 +1829,16 @@ void jobs_stat_init(int which_job)
 
 void give_basic_knowledge(int which_job)
 {
+    // Every new character begins with one identified healing potion.
+    set_ident_type( OBJ_POTIONS, POT_HEALING, ID_KNOWN_TYPE );
+
     switch (which_job)
     {
     case JOB_PRIEST:
     case JOB_PALADIN:
-        set_ident_type( OBJ_POTIONS, POT_HEALING, ID_KNOWN_TYPE );
         break;
 
     case JOB_HEALER:
-        set_ident_type( OBJ_POTIONS, POT_HEALING, ID_KNOWN_TYPE );
         set_ident_type( OBJ_POTIONS, POT_HEAL_WOUNDS, ID_KNOWN_TYPE );
         break;
 
@@ -4779,6 +4780,21 @@ void give_items_skills()
 
     case JOB_WANDERER:
         create_wanderer();
+        break;
+    }
+
+    // A universal safety resource: give every background one healing potion.
+    for (int i = 0; i < ENDOFPACK; i++)
+    {
+        if (you.inv[i].quantity != 0)
+            continue;
+
+        you.inv[i].quantity = 1;
+        you.inv[i].base_type = OBJ_POTIONS;
+        you.inv[i].sub_type = POT_HEALING;
+        you.inv[i].plus = 0;
+        you.inv[i].plus2 = 0;
+        you.inv[i].special = 0;
         break;
     }
 
