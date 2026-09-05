@@ -1043,13 +1043,13 @@ static void eating(unsigned char item_class, int item_type)
             food_value = 600;
             break;
         case FOOD_STRAWBERRY:
-            food_value = 200;
+            food_value = 220;
             break;
         case FOOD_GRAPE:
-            food_value = 100;
+            food_value = 130;
             break;
         case FOOD_SULTANA:
-            food_value = 70;     // will not save you from starvation
+            food_value = 100;    // will not save you from starvation
             break;
         default:
             break;
