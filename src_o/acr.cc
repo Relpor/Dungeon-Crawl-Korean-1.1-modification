@@ -202,6 +202,7 @@ extern quit_wingame();
 
 // Functions in main module
 static void close_door(char move_x, char move_y);
+static void attack_adjacent_hostile(void);
 static void do_berserk_no_combat_penalty(void);
 static bool initialise(void);
 static void input(void);
@@ -1700,6 +1701,10 @@ static void input(void)
     case CMD_SEARCH:
         search_around(false);
         you.turn_is_over = 1;
+        break;
+
+    case '\t':
+        attack_adjacent_hostile();
         break;
 
     case 'z':
@@ -3678,6 +3683,59 @@ static void do_berserk_no_combat_penalty(void)
     }
     return;
 }                               // end do_berserk_no_combat_penalty()
+
+
+// Attack the strongest visible hostile monster next to the player.
+static void attack_adjacent_hostile(void)
+{
+    int target = NON_MONSTER;
+    char target_x = 0;
+    char target_y = 0;
+
+    // Compass order gives a stable tie-breaker, starting at north.
+    for (int i = 0; i < 8; i++)
+    {
+        const int x = you.x_pos + Compass[i].x;
+        const int y = you.y_pos + Compass[i].y;
+        const int mon = mgrd[x][y];
+
+        if (mon == NON_MONSTER)
+            continue;
+
+        struct monsters *monster = &menv[mon];
+
+        // Do not reveal invisible/submerged monsters or attack allies/neutral
+        // creatures automatically.
+        if (monster->attitude != ATT_HOSTILE
+            || !player_monster_visible(monster)
+            || mons_has_ench(monster, ENCH_SUBMERGED))
+        {
+            continue;
+        }
+
+        if (target == NON_MONSTER
+            || monster->hit_dice > menv[target].hit_dice)
+        {
+            target = mon;
+            target_x = Compass[i].x;
+            target_y = Compass[i].y;
+        }
+    }
+
+    if (target == NON_MONSTER)
+    {
+#ifdef JP
+        mpr("인접한 적이 없다.");
+#else
+        mpr("There are no adjacent hostile monsters.");
+#endif
+        return;
+    }
+
+    // Reuse the regular movement path so combat, turn use, and berserk
+    // bookkeeping are identical to a directional melee attack.
+    move_player(target_x, target_y);
+}
 
 
 // Called when the player moves by walking/running. Also calls
