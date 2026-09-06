@@ -436,20 +436,74 @@ inline bool is_stair(unsigned char gridc) {
     }
 }
 
+enum explore_stop_reason
+{
+    EXPLORE_STOP_NONE,
+    EXPLORE_STOP_ITEM,
+    EXPLORE_STOP_SHOP,
+    EXPLORE_STOP_STAIRS,
+    EXPLORE_STOP_ALTAR
+};
+
 /*
- * Given a square that has just become visible during explore, returns true
- * if the player might consider the square worth stopping explore for.
+ * Given a square that has just become visible during explore, returns the
+ * reason the player might consider it worth stopping for.
  */
-static bool is_interesting_square(int x, int y) {
+static explore_stop_reason get_explore_stop_reason(int x, int y) {
     if (igrd[x + 1][y + 1] != NON_ITEM)
-        return true;
+        return EXPLORE_STOP_ITEM;
 
     // Shops and altars outside the Ecumenical Temple are interesting.
     unsigned char grid = grd[x + 1][y + 1];
-    return grid == DNGN_ENTER_SHOP
-            || is_stair(grid)
-            || (is_altar(grid)
-                    && you.where_are_you != BRANCH_ECUMENICAL_TEMPLE);
+    if (grid == DNGN_ENTER_SHOP)
+        return EXPLORE_STOP_SHOP;
+    if (is_stair(grid))
+        return EXPLORE_STOP_STAIRS;
+    if (is_altar(grid) && you.where_are_you != BRANCH_ECUMENICAL_TEMPLE)
+        return EXPLORE_STOP_ALTAR;
+
+    return EXPLORE_STOP_NONE;
+}
+
+static void announce_explore_stop(explore_stop_reason reason)
+{
+    switch (reason)
+    {
+    case EXPLORE_STOP_ITEM:
+#ifdef JP
+        mpr("처음 보는 아이템을 발견했다.");
+#else
+        mpr("You found a new item.");
+#endif
+        break;
+
+    case EXPLORE_STOP_SHOP:
+#ifdef JP
+        mpr("처음 보는 상점을 발견했다.");
+#else
+        mpr("You found a new shop.");
+#endif
+        break;
+
+    case EXPLORE_STOP_STAIRS:
+#ifdef JP
+        mpr("처음 보는 계단을 발견했다.");
+#else
+        mpr("You found new stairs.");
+#endif
+        break;
+
+    case EXPLORE_STOP_ALTAR:
+#ifdef JP
+        mpr("처음 보는 제단을 발견했다.");
+#else
+        mpr("You found a new altar.");
+#endif
+        break;
+
+    default:
+        break;
+    }
 }
 
 /*
@@ -462,6 +516,8 @@ static bool is_interesting_square(int x, int y) {
  * Don't call travel() if you.running >= 0.
  */
 void travel(int *keyin, char *move_x, char *move_y) {
+    explore_stop_reason stop_reason = EXPLORE_STOP_NONE;
+
     *keyin = 128;
 
     // Abort travel/explore if you're confused or a key was pressed.
@@ -481,12 +537,17 @@ void travel(int *keyin, char *move_x, char *move_y) {
         for (int y = 0; y < GYM - 1; ++y) {
             for (int x = 0; x < GXM - 1; ++x) {
                 if (!is_player_mapped(mapshadow[x][y])
-                        && is_player_mapped(env.map[x][y])
-                        && is_interesting_square(x, y))
+                        && is_player_mapped(env.map[x][y]))
                 {
-                    you.running = 0;
-                    y = GYM;
-                    break;
+                    const explore_stop_reason reason =
+                        get_explore_stop_reason(x, y);
+                    if (reason != EXPLORE_STOP_NONE)
+                    {
+                        you.running = 0;
+                        stop_reason = reason;
+                        y = GYM;
+                        break;
+                    }
                 }
             }
         }
@@ -574,6 +635,9 @@ void travel(int *keyin, char *move_x, char *move_y) {
 
     if (!you.running && Options.travel_delay == -1)
         redraw_screen();
+
+    if (stop_reason != EXPLORE_STOP_NONE)
+        announce_explore_stop(stop_reason);
 }
 
 /*

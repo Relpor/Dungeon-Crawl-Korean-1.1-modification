@@ -1599,6 +1599,15 @@ void monster_grid(bool do_updates)
                      && !mons_flag( monster->type, M_NO_EXP_GAIN )
                      && you.running != 0)
             {
+                if (you.running == RUN_EXPLORE)
+                {
+#ifdef JP
+                    mpr("위험해 보이는 몬스터를 발견했다.");
+#else
+                    mpr("You found a dangerous-looking monster.");
+#endif
+                }
+
                 // Friendly monsters, mimics, or harmless monsters
                 // don't disturb the player's running/resting.
                 //
