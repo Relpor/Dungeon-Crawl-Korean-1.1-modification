@@ -913,7 +913,8 @@ const char *command_string( int i )
            (i == 481) ? "Ctrl-G : 기억한 위치로 자동이동"           :
            (i == 482) ? "Ctrl-E : 현위치 아이템 메시지 무시"      :
            (i == 483) ? "Ctrl-S : 아이템 위치 기록(*.lst에서 확인)":
-           (i == 484) ? "Tab : 인접한 적 자동 공격 / 조준 중 다음 적 선택"
+           (i == 484) ? "Tab : 인접한 적 자동 공격 / 조준 중 다음 적 선택" :
+           (i == 485) ? "F : 자동 탐색"
 #else /* JP */
     return((i ==  10) ? "a    : use special ability"              :
            (i ==  20) ? "d(#) : drop (exact quantity of) items"   :
@@ -985,7 +986,8 @@ const char *command_string( int i )
            (i == 470) ? "Ctrl  & DIR : door; untrap; attack"      :
            (i == 475) ? "* DIR : door; untrap; attack"            :
            (i == 478) ? "Shift & 5 on keypad : rest 100 turns"    :
-           (i == 484) ? "Tab : auto-attack adjacent enemy / next target while aiming"
+           (i == 484) ? "Tab : auto-attack adjacent enemy / next target while aiming" :
+           (i == 485) ? "F : auto-explore"
 #endif /* JP */
                       : "");
 }                               // end command_string()

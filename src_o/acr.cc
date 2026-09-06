@@ -1763,6 +1763,7 @@ static void input(void)
         redraw_screen();
         break;
 
+    case 'F':
     case CONTROL('O'):
     case CMD_EXPLORE:
         if (you.level_type == LEVEL_LABYRINTH || you.level_type == LEVEL_ABYSS)
